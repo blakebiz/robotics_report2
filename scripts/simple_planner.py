@@ -6,6 +6,18 @@ import math
 # import the plan message
 from ur5e_control.msg import Plan
 from geometry_msgs.msg import Twist
+from robot_vision_lectures.msg import SphereParams
+from tf2_geometry_msgs import PointStamped
+
+sphere_params = SphereParams()
+received_sphere_params = False
+
+# /sphere_params subscriber
+def get_sphere_params(data: SphereParams):
+	global sphere_params
+	global received_sphere_params
+	sphere_params = data
+	received_sphere_params = True
 
 
 def setup_point(*points):
@@ -18,6 +30,8 @@ def setup_point(*points):
 if __name__ == '__main__':
 	# initialize the node
 	rospy.init_node('simple_planner', anonymous = True)
+	# add a subscriber to listen for the sphere parameters
+	sphere_sub = rospy.Subscriber("/sphere_params", SphereParams, get_sphere_params)
 	# add a publisher for sending joint position commands
 	plan_pub = rospy.Publisher('/plan', Plan, queue_size = 10)
 	# set a 10Hz frequency for this loop
@@ -25,23 +39,39 @@ if __name__ == '__main__':
 
 	# define a plan variable
 	plan = Plan()
-	# declare first point to move to
-	plan.points.append(setup_point(-.5, -.14, .4, 3.14, 0.0, 1.5))
-	# drop arm to pick up object
-	plan.points.append(setup_point(-.5, -.14, 0, 3.14, 0.0, 1.5))
-	# pick arm back up
-	plan.points.append(setup_point(-.5, -.14, .5, 3.14, 0.0, 1.5))
-	# move to position above target
-	plan.points.append(setup_point(-.5, -.6, .5, 3.14, 0.0, 1.5))
-	# drop arm with object
-	plan.points.append(setup_point(-.5, -.6, 0, 3.14, 0.0, 1.5))
-	# pick arm back up
-	plan.points.append(setup_point(-.5, -.6, .5, 3.14, 0.0, 1.5))
 
 	
 	
 	while not rospy.is_shutdown():
-		# publish the plan
-		plan_pub.publish(plan)
-		# wait for 0.1 seconds until the next loop and repeat
-		loop_rate.sleep()
+		# ensure we have received parameters to go off of
+		if received_sphere_params:
+			# try getting the most update transformation between the tool frame and the base frame
+			try:
+				trans = tfBuffer.lookup_transform("base", "camera_color_optical_frame", rospy.Time())
+			except (tf2_ros.LookupException, tf2_ros.ConnectivityException, tf2_ros.ExtrapolationException):
+				print('Frames not available!!!')
+				loop_rate.sleep()
+				continue
+			# extract the xyz coordinates
+			x = trans.transform.translation.x
+			y = trans.transform.translation.y
+			z = trans.transform.translation.z
+			# extract the quaternion and convert to RPY
+			q_rot = trans.transform.rotation
+			roll, pitch, yaw, = euler_from_quaternion([q_rot.x, q_rot.y, q_rot.z, q_rot.w])
+			# define a testpoint in the tool frame
+			pt_in_camera = PointStamped()
+			pt_in_camera.header.frame_id = 'camera_color_optical_frame'
+			pt_in_camera.header.stamp = rospy.get_rostime()
+			
+			pt_in_camera.point.x = sphere_params.xc
+			pt_in_camera.point.y = sphere_params.yc
+			pt_in_camera.point.z = sphere_params.zc
+			
+			# convert the 3D point to the base frame coordinates
+			pt_in_base = tfBuffer.transform(pt_in_tool,'base', rospy.Duration(1.0))
+			
+			# publish the plan
+			plan_pub.publish(plan)
+			# wait for 0.1 seconds until the next loop and repeat
+			loop_rate.sleep()
