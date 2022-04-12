@@ -2,12 +2,14 @@
 
 import rospy
 import math
+import tf2_ros
+from tf.transformations import *
 
-# import the plan message
 from ur5e_control.msg import Plan
 from geometry_msgs.msg import Twist
 from robot_vision_lectures.msg import SphereParams
 from tf2_geometry_msgs import PointStamped
+from geometry_msgs.msg import Quaternion
 
 sphere_params = SphereParams()
 received_sphere_params = False
@@ -37,11 +39,12 @@ if __name__ == '__main__':
 	# set a 10Hz frequency for this loop
 	loop_rate = rospy.Rate(10)
 
-	# define a plan variable
-	plan = Plan()
+	tfBuffer = tf2_ros.Buffer()
+	listener = tf2_ros.TransformListener(tfBuffer)
+	
 
 	
-	
+	q_rot = Quaternion()
 	while not rospy.is_shutdown():
 		# ensure we have received parameters to go off of
 		if received_sphere_params:
@@ -69,8 +72,10 @@ if __name__ == '__main__':
 			pt_in_camera.point.z = sphere_params.zc
 			
 			# convert the 3D point to the base frame coordinates
-			pt_in_base = tfBuffer.transform(pt_in_tool,'base', rospy.Duration(1.0))
-			
+			pt_in_base = tfBuffer.transform(pt_in_camera,'base', rospy.Duration(1.0))
+			x, y, z, rad = pt_in_base.point.x, pt_in_base.point.y, pt_in_base.point.z, sphere_params.radius
+			plan = Plan()
+			plan.points.append(setup_point(sphere_params.xc, sphere_params.yc, sphere_params.zc + sphere_params.radius, roll, pitch, yaw))
 			# publish the plan
 			plan_pub.publish(plan)
 			# wait for 0.1 seconds until the next loop and repeat
