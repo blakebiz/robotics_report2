@@ -75,7 +75,9 @@ if __name__ == '__main__':
 			pt_in_base = tfBuffer.transform(pt_in_camera,'base', rospy.Duration(1.0))
 			x, y, z, rad = pt_in_base.point.x, pt_in_base.point.y, pt_in_base.point.z, sphere_params.radius
 			plan = Plan()
-			plan.points.append(setup_point(sphere_params.xc, sphere_params.yc, sphere_params.zc + sphere_params.radius, roll, pitch, yaw))
+			plan.points.append(setup_point(1, 1, 1, 1, 1, 1))
+			plan.points.append(setup_point(pt_in_base.point.x, pt_in_base.point.y, pt_in_base.point.z + sphere_params.radius, 1, 1, 1))
+			# plan.points.append(setup_point(sphere_params.xc, sphere_params.yc, sphere_params.zc + sphere_params.radius, roll, pitch, yaw))
 			# publish the plan
 			plan_pub.publish(plan)
 			# wait for 0.1 seconds until the next loop and repeat
