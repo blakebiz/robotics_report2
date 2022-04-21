@@ -91,9 +91,10 @@ if __name__ == '__main__':
 			pt_in_base = tfBuffer.transform(pt_in_camera,'base', rospy.Duration(1.0))
 			x, y, z, rad = pt_in_base.point.x, pt_in_base.point.y, pt_in_base.point.z, sphere_params.radius
 			plan = Plan()
-			roll, pitch, yaw = math.pi, 0, math.pi/2
+			roll, pitch, yaw = 3.13, 0.017, 1.52
+			plan.points.append(setup_point(-0.0142, -0.4095, 0.2713, roll, pitch, yaw))
 			plan.points.append(setup_point(x, y, z + (rad*2), roll, pitch, yaw))
-			plan.points.append(setup_point(x, y, z + rad, roll, pitch, yaw))
+			plan.points.append(setup_point(x, y, z + 0.02, roll, pitch, yaw))
 			plan.points.append(setup_point(x, y, z + (rad*2), roll, pitch, yaw))
 			plan.points.append(setup_point(x + (rad*4), y, z + (rad*2), roll, pitch, yaw))
 			plan.points.append(setup_point(x + (rad*4), y, z + rad, roll, pitch, yaw))
